@@ -1,0 +1,52 @@
+body {
+    font-family: sans-serif;
+    text-align: center;
+}
+
+#board {
+    display: grid;
+    grid-template-columns: repeat(8, 50px);
+    grid-template-rows: (8, 50px);
+    gap: 2px;
+    justify-content: center;
+    margin: 20px auto;
+}
+
+.cell {
+    width: 50px;
+    height: 50px;
+    background-color: #0a7f42;
+    position: relative;
+    cursor: pointer;
+}
+
+.stone {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    position: absolute;
+    top: 5px;
+    left: 5px;
+}
+
+.black {
+    background-color: black;
+}
+
+.white {
+    background-color: white;
+}
+
+.cell.can-place {
+    background-color: rgba(255, 0, 0, 0.1); 
+}
+
+.cell.can-place:hover {
+    background-color: rgba(255, 0, 0, 0.5);
+    cursor: pointer;
+}
+
+#count {
+    margin: 8px 0;
+    font-weight: bold;
+}
