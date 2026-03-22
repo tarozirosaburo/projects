@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>Daily ToDo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 500px;
+      margin: auto;
+      background: white;
+      padding: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    h1 {
+      margin-top: 0;
+      text-align: center;
+    }
+    h2 {
+      margin-top: 0;
+      text-align: center;
+    }
+    .date {
+      text-align: center;
+      color: #666;
+      margin-bottom: 1rem;
+    }
+    .input-row {
+      display: flex;
+      gap: 0.5rem;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 0.5rem;
+      font-size: 1rem;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin-top: 1rem;
+    }
+    li {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #eee;
+    }
+    li.done span {
+      text-decoration: line-through;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>ToDo List</h1>
+    <h2>
+      <a href="syukatu.html" target="_blank">企業リスト</a>
+    </h2>
+    <div class="date" id="date"></div>
+
+    <div class="input-row">
+      <input type="text" id="todoInput" placeholder="やることを入力" />
+      <button onclick="addTodo()">追加</button>
+    </div>
+
+    <h3>今日のタスク</h3>
+    <ul id="todayList"></ul>
+
+    <h3>前日の未完了</h3>
+    <ul id="yesterdayList"></ul>
+
+    <h3>それ以前の未完了</h3>
+    <ul id="olderList"></ul>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'daily_todo';
+
+    function today() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function loadData() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) {
+        return { date: today(), todos: [] };
+      }
+      return JSON.parse(raw);
+    }
+
+    function saveData(data) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function daysDiff(d1, d2) {
+      const a = new Date(d1);
+      const b = new Date(d2);
+      return Math.floor((b - a) / (1000 * 60 * 60 * 24));
+    }
+
+    let data = loadData();
+    const currentDate = today();
+
+    if (data.date !== currentDate) {
+      data.date = currentDate;
+      saveData(data);
+    }
+
+    document.getElementById('date').textContent = currentDate;
+
+    function render() {
+      const todayUl = document.getElementById('todayList');
+      const yUl = document.getElementById('yesterdayList');
+      const oUl = document.getElementById('olderList');
+      todayUl.innerHTML = yUl.innerHTML = oUl.innerHTML = '';
+
+      data.todos.forEach((todo, index) => {
+        const diff = daysDiff(todo.date, currentDate);
+        let ul;
+        if (diff === 0) ul = todayUl;
+        else if (diff === 1) ul = yUl;
+        else ul = oUl;
+
+        const li = document.createElement('li');
+        if (todo.done) li.classList.add('done');
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = todo.done;
+        checkbox.onchange = () => {
+          todo.done = checkbox.checked;
+          saveData(data);
+          render();
+        };
+
+        const span = document.createElement('span');
+        span.textContent = todo.text;
+        span.style.flex = '1';
+
+        const delBtn = document.createElement('button');
+        delBtn.textContent = '削除';
+        delBtn.onclick = () => {
+          data.todos.splice(index, 1);
+          saveData(data);
+          render();
+        };
+
+        li.appendChild(checkbox);
+        li.appendChild(span);
+        li.appendChild(delBtn);
+        ul.appendChild(li);
+      });
+    }
+
+    function addTodo() {
+      const input = document.getElementById('todoInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      data.todos.push({ text, done: false, date: currentDate });({ text, done: false });
+      input.value = '';
+      saveData(data);
+      render();
+    }
+
+    document.getElementById('todoInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') addTodo();
+    });
+
+    render();
+  </script>
+</body>
+</html>

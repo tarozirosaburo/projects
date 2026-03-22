@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>就活管理ボード - Grouped View</title>
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --processing-border: #2196f3;
+            --declined-border: #9e9e9e;
+            --route-label-bg: #e9ecef;
+        }
+
+        body { font-family: sans-serif; background-color: var(--bg-color); margin: 0; padding: 10px; font-size: 13px; }
+        h1 { font-size: 1.2rem; text-align: center; margin: 10px 0; color: #333; }
+
+        .input-area {
+            max-width: 800px; margin: 0 auto 15px; background: white; padding: 10px;
+            border-radius: 4px; display: flex; gap: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        #autocomplete-list {
+            position: absolute; top: 100%; left: 10px; width: 40%; background: white;
+            border: 1px solid #ddd; z-index: 1000; max-height: 150px; overflow-y: auto;
+        }
+
+        .autocomplete-item { padding: 8px; cursor: pointer; border-bottom: 1px solid #eee; }
+        .autocomplete-item:hover { background-color: #f0f0f0; }
+
+        input, select, button { padding: 5px 8px; font-size: 12px; border: 1px solid #ddd; border-radius: 3px; }
+        #companyInput { flex: 3; }
+        button { background-color: #444; color: white; border: none; cursor: pointer; }
+
+        .board { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+        .column { background: #e2e4e6; padding: 4px; border-radius: 3px; min-height: 300px; }
+        .column h2 { font-size: 0.9rem; margin: 0 0 5px 0; color: #444; border-bottom: 2px solid #ccc; padding-bottom: 5px; text-align: center; }
+
+        /* 選考中の中のグループ見出し */
+        .route-group { margin-bottom: 15px; }
+        .route-label { 
+            font-size: 0.75rem; font-weight: bold; color: #555; 
+            background: var(--route-label-bg); padding: 2px 8px; 
+            border-radius: 10px; display: inline-block; margin-bottom: 5px;
+        }
+
+        .card {
+            background: white; margin-bottom: 4px; padding: 6px 10px; border-radius: 3px;
+            display: flex; align-items: center; justify-content: space-between;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .company-name { font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; flex-grow: 1; }
+        .status-processing { border-left: 3px solid var(--processing-border); }
+        .status-declined { border-left: 3px solid var(--declined-border); }
+
+        .delete-btn { background: none; color: #ccc; border: none; padding: 0 5px; font-size: 16px; cursor: pointer; }
+        .delete-btn:hover { color: #f44336; }
+
+        @media (max-width: 800px) { .board { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+<h1>Career Tracker</h1>
+<h1>
+  <a href="todo.html" target="_blank">やることリスト
+  </a>
+</h1>
+
+<div class="input-area">
+    <input type="text" id="companyInput" placeholder="企業名" autocomplete="off">
+    <div id="autocomplete-list"></div>
+    <select id="routeSelect">
+        <option value="OfferBox">OfferBox</option>
+        <option value="MyNavi">マイナビ</option>
+        <option value="OpenWork">OpenWork</option>
+        <option value="kimisuka">キミスカ</option>
+        <option value="TechOffer">TechOffer</option>
+    </select>
+    <select id="statusSelect">
+        <option value="processing">選考中</option>
+        <option value="declined">辞退</option>
+    </select>
+    <button onclick="addCompany()">追加</button>
+</div>
+
+<div class="board">
+    <div class="column">
+        <h2>⏳ 選考中</h2>
+        <div id="processingGroups"></div>
+    </div>
+
+    <div class="column">
+        <h2>🏳️ 辞退 (1/4)</h2>
+        <div id="declinedList1"></div>
+    </div>
+    <div class="column">
+        <h2>🏳️ 辞退 (2/4)</h2>
+        <div id="declinedList2"></div>
+    </div>
+    <div class="column">
+        <h2>🏳️ 辞退 (3/4)</h2>
+        <div id="declinedList3"></div>
+    </div>
+    <div class="column">
+        <h2>🏳️ 辞退 (4/4)</h2>
+        <div id="declinedList4"></div>
+    </div>
+</div>
+
+<script>
+    let companies = JSON.parse(localStorage.getItem('shukatsuData')) || [];
+    const input = document.getElementById('companyInput');
+    const listContainer = document.getElementById('autocomplete-list');
+
+    const routes = ["OfferBox", "MyNavi", "OpenWork", "kimisuka", "TechOffer"];
+
+    input.addEventListener('input', (e) => {
+        const query = e.target.value.toUpperCase();
+        if (query.length < 1) { listContainer.innerHTML = ''; return; }
+        const history = [...new Set(companies.map(c => c.name))];
+        const suggestions = history.filter(name => name.includes(query));
+        renderSuggestions(suggestions);
+    });
+
+    function renderSuggestions(suggestions) {
+        listContainer.innerHTML = '';
+        suggestions.slice(0, 5).forEach(name => {
+            const div = document.createElement('div');
+            div.className = 'autocomplete-item';
+            div.textContent = name;
+            div.onclick = () => { input.value = name; listContainer.innerHTML = ''; };
+            listContainer.appendChild(div);
+        });
+    }
+
+    document.addEventListener('keypress', (e) => { if (e.key === 'Enter') addCompany(); });
+
+    function addCompany() {
+        if (!input.value) return;
+        const finalName = input.value.trim().toUpperCase();
+        const route = document.getElementById('routeSelect').value;
+        const status = document.getElementById('statusSelect').value;
+
+        const newEntry = { id: Date.now(), name: finalName, route: route, status: status };
+        companies.push(newEntry);
+        saveAndRender();
+        input.value = '';
+        input.focus(); 
+    }
+
+    function editCompanyName(id) {
+        const company = companies.find(c => c.id === id);
+        const newName = prompt("企業名を修正しますか？", company.name);
+        if (newName && newName.trim() !== "") {
+            company.name = newName.trim().toUpperCase();
+            saveAndRender();
+        }
+    }
+
+    function deleteCompany(id) {
+        if(confirm('削除しますか？')) {
+            companies = companies.filter(c => c.id !== id);
+            saveAndRender();
+        }
+    }
+
+    function saveAndRender() {
+        companies.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+        localStorage.setItem('shukatsuData', JSON.stringify(companies));
+        render();
+    }
+
+    function createCard(company) {
+        const card = document.createElement('div');
+        card.className = `card status-${company.status}`;
+        card.innerHTML = `
+            <span class="company-name" onclick="editCompanyName(${company.id})">${company.name}</span>
+            <button class="delete-btn" onclick="deleteCompany(${company.id})">&times;</button>
+        `;
+        return card;
+    }
+
+    function render() {
+        const processingGroups = document.getElementById('processingGroups');
+        const declinedList1 = document.getElementById('declinedList1');
+        const declinedList2 = document.getElementById('declinedList2');
+        const declinedList3 = document.getElementById('declinedList3');
+        const declinedList4 = document.getElementById('declinedList4');
+
+        processingGroups.innerHTML = '';
+        declinedList1.innerHTML = '';
+        declinedList2.innerHTML = '';
+        declinedList3.innerHTML = '';
+        declinedList4.innerHTML = '';
+
+        // --- 選考中のグループ分け描画 ---
+        routes.forEach(route => {
+            const groupCompanies = companies.filter(c => c.status === 'processing' && c.route === route);
+            
+            // そのルートに企業がある場合のみセクションを表示
+            if (groupCompanies.length > 0) {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'route-group';
+                
+                const label = document.createElement('div');
+                label.className = 'route-label';
+                label.textContent = route === 'TechOffer' ? 'TechOffer' : route;
+                groupDiv.appendChild(label);
+
+                groupCompanies.forEach(c => groupDiv.appendChild(createCard(c)));
+                processingGroups.appendChild(groupDiv);
+            }
+        });
+
+        // --- 辞退の描画（4列） ---
+        const declinedCompanies = companies.filter(c => c.status === 'declined');
+        const quarter = Math.ceil(declinedCompanies.length / 4);
+
+        declinedCompanies.forEach((company, index) => {
+            const card = createCard(company);
+            if (index < quarter) declinedList1.appendChild(card);
+            else if (index < 2*quarter) declinedList2.appendChild(card);
+            else if (index < 3*quarter) declinedList3.appendChild(card);
+            else declinedList4.appendChild(card);
+        });
+    }
+
+    render();
+</script>
+
+</body>
+</html>
