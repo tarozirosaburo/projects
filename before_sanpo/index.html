@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>散歩コース作成</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+    }
+
+    #mapcontainer {
+      height: 100vh;
+    }
+
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: white;
+      padding: 8px;
+      z-index: 1000;
+    }
+
+    .is-hidden {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="controls">
+    <button id="switch">モード切替</button>
+    <div id="node">
+      <button id="modeNode">ノード追加</button>
+      <button id="clear">リセット</button>
+    </div>
+    <div id="course">
+      <label>
+        距離:
+        <input type="number" id="distanceInput" step="0.1" value="5">km
+      </label>
+      <button id="generateBtn">コース作成</button>
+    </div>
+  </div>
+
+  <div id="mapcontainer"></div>
+
+  <script src="js/map.js"></script>
+  <script src="js/graph.js"></script>
+  <script src="js/course.js"></script>
+  <script src="js/ui.js"></script>
+</body>
+
+</html>

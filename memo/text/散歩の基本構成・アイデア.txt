@@ -1,0 +1,20 @@
+・散歩する道を決めるもの 
+・スタート、ゴール、距離を決めるとコースを自動で作る 
+・googlemapと連動出来たり 
+・スタンプラリー的な形だと見直したときに達成感 
+・スマホと連動
+自動生成ルート表示
+歩行ログ保存
+スタンプ表示
+
+コース履歴
+達成率
+コース共有
+難易度（坂・距離）
+PWA
+
+構成
+フロント：HTML / CSS / JavaScript
+地図：Google Maps or Leaflet
+GPS：Geolocation API
+保存：LocalStorage or 簡単なDB
