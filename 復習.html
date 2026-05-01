@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>Daily Review Scheduler</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #f8f9fa; margin: 0; padding: 1.5rem; color: #333; }
+    .container { max-width: 650px; margin: auto; background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+    h1 { font-size: 1.5rem; text-align: center; color: #1a73e8; margin-bottom: 0.5rem; }
+    .date-display { text-align: center; color: #70757a; margin-bottom: 2rem; font-size: 0.9rem; }
+    
+    .input-group { display: flex; gap: 8px; margin-bottom: 2rem; background: #f1f3f4; padding: 8px; border-radius: 8px; }
+    input[type="text"] { flex: 1; border: none; background: transparent; padding: 10px; font-size: 1rem; outline: none; }
+    button.add-btn { background: #1a73e8; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    
+    .date-section { margin-bottom: 1.5rem; }
+    .date-header { font-size: 0.9rem; font-weight: bold; color: #5f6368; border-bottom: 2px solid #e8eaed; padding-bottom: 4px; margin-bottom: 8px; display: flex; justify-content: space-between; }
+    
+    ul { list-style: none; padding: 0; margin: 0; }
+    li { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+    li.done .content { text-decoration: line-through; color: #9aa0a6; }
+    
+    .content { flex: 1; font-size: 1rem; }
+    .link-text { color: #1a73e8; text-decoration: none; word-break: break-all; }
+    .link-text:hover { text-decoration: underline; }
+    
+    .del-btn { opacity: 0; color: #d93025; background: none; border: 1px solid #f5c2c7; padding: 2px 8px; border-radius: 4px; cursor: pointer; transition: 0.2s; font-size: 0.75rem; }
+    li:hover .del-btn { opacity: 1; }
+    
+    #moreSection { display: none; margin-top: 1rem; border-top: 1px dashed #dadce0; padding-top: 1rem; }
+    .toggle-btn { display: block; width: 100%; padding: 10px; background: #f8f9fa; border: 1px solid #dadce0; border-radius: 8px; color: #5f6368; cursor: pointer; font-size: 0.85rem; margin: 1rem 0; }
+    .toggle-btn:hover { background: #f1f3f4; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Review Tracker</h1>
+  <div class="date-display" id="todayText"></div>
+
+  <div class="input-group">
+    <input type="text" id="todoInput" placeholder="入力..." />
+    <button class="add-btn" onclick="addTodo()">追加</button>
+  </div>
+
+  <div id="mainTaskArea"></div>
+
+  <button id="toggleBtn" class="toggle-btn" onclick="toggleFuture()">▼ 1週間より先の復習予定を表示</button>
+  
+  <div id="moreSection"></div>
+</div>
+
+<script>
+const STORAGE_KEY = 'ebbinghaus_v2';
+const REVIEW_INTERVALS = [1, 3, 7, 14, 30];
+
+// 日本時間（ローカルタイム）で YYYY-MM-DD を取得する関数
+function getFormattedDate(date) {
+  // 'sv-SE' ロケールは YYYY-MM-DD 形式を返すため便利です
+  return date.toLocaleDateString('sv-SE');
+}
+
+function loadData() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  return raw ? JSON.parse(raw) : { todos: [] };
+}
+
+function saveData(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function createContentNode(text) {
+  const urlPattern = /https?:\/\/[\w/:%#\$&\?\(\)~\.=\+\-]+/g;
+  const container = document.createElement('div');
+  container.className = 'content';
+  
+  if (urlPattern.test(text)) {
+    const a = document.createElement('a');
+    a.href = text;
+    a.textContent = text;
+    a.target = "_blank";
+    a.className = "link-text";
+    container.appendChild(a);
+  } else {
+    container.textContent = text;
+  }
+  return container;
+}
+
+function render() {
+  const data = loadData();
+  const today = new Date();
+  const todayStr = getFormattedDate(today);
+  
+  const sevenDaysLater = new Date();
+  sevenDaysLater.setDate(today.getDate() + 7);
+  const sevenDaysLaterStr = getFormattedDate(sevenDaysLater);
+
+  document.getElementById('todayText').textContent = `本日: ${todayStr}`;
+  
+  const mainArea = document.getElementById('mainTaskArea');
+  const moreSection = document.getElementById('moreSection');
+  mainArea.innerHTML = '';
+  moreSection.innerHTML = '';
+
+  // 日付順にソート
+  data.todos.sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate));
+
+  // 日付ごとにグループ化
+  const groups = {};
+  data.todos.forEach((todo, index) => {
+    if (!groups[todo.scheduledDate]) groups[todo.scheduledDate] = [];
+    groups[todo.scheduledDate].push({ ...todo, originalIndex: index });
+  });
+
+  Object.keys(groups).forEach(dateStr => {
+    // 今日より前の日付（期限切れ）も含めてメインに表示、1週間より先はmoreSectionへ
+    const isFuture = dateStr > sevenDaysLaterStr;
+    const targetArea = isFuture ? moreSection : mainArea;
+
+    const section = document.createElement('div');
+    section.className = 'date-section';
+
+    const header = document.createElement('div');
+    header.className = 'date-header';
+    header.innerHTML = `<span>${dateStr === todayStr ? '今日' : dateStr}</span>`;
+    
+    const ul = document.createElement('ul');
+    groups[dateStr].forEach(todo => {
+      const li = document.createElement('li');
+      if (todo.done) li.classList.add('done');
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = todo.done;
+      cb.onchange = () => {
+        data.todos[todo.originalIndex].done = cb.checked;
+        saveData(data);
+        render();
+      };
+
+      const content = createContentNode(todo.text);
+      
+      const del = document.createElement('button');
+      del.textContent = '削除';
+      del.className = 'del-btn';
+      del.onclick = () => {
+        data.todos.splice(todo.originalIndex, 1);
+        saveData(data);
+        render();
+      };
+
+      li.append(cb, content, del);
+      ul.appendChild(li);
+    });
+
+    section.append(header, ul);
+    targetArea.appendChild(section);
+  });
+}
+
+function addTodo() {
+  const input = document.getElementById('todoInput');
+  const text = input.value.trim();
+  if (!text) return;
+
+  const data = loadData();
+  const today = new Date();
+  const todayStr = getFormattedDate(today);
+
+  // 初回タスクを追加
+  data.todos.push({ text, done: false, scheduledDate: todayStr });
+
+  // 復習予約を追加
+  REVIEW_INTERVALS.forEach(days => {
+    const d = new Date();
+    // 本日の日付を基準にして加算
+    d.setDate(today.getDate() + days);
+    data.todos.push({
+      text: `${text}`,
+      done: false,
+      scheduledDate: getFormattedDate(d)
+    });
+  });
+
+  input.value = '';
+  saveData(data);
+  render();
+}
+
+function toggleFuture() {
+  const ms = document.getElementById('moreSection');
+  const btn = document.getElementById('toggleBtn');
+  if (ms.style.display === 'block') {
+    ms.style.display = 'none';
+    btn.textContent = '▼ 1週間より先の復習予定を表示';
+  } else {
+    ms.style.display = 'block';
+    btn.textContent = '▲ 閉じる';
+  }
+}
+
+document.getElementById('todoInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addTodo();
+});
+
+render();
+</script>
+</body>
+</html>
